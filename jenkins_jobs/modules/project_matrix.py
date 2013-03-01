@@ -100,9 +100,14 @@ class Matrix(jenkins_jobs.modules.base.Base):
         ax_root = XML.SubElement(root, 'axes')
         for axis_ in data.get('axes', []):
             axis = axis_['axis']
-            if axis['type'] != 'label-expression':
-                raise ValueError('Only label-expression axis type supported')
-            lbl_root = XML.SubElement(ax_root, 'hudson.matrix.LabelExpAxis')
+            if axis['type'] == 'label-expression':
+                lbl = 'hudson.matrix.LabelExpAxis'
+            elif axis['type'] == 'text':
+                lbl = 'hudson.matrix.TextAxis'
+            else:
+                raise ValueError('Only label-expression and text axis type supported')
+
+            lbl_root = XML.SubElement(ax_root, lbl)
             name, values = axis['name'], axis['values']
             XML.SubElement(lbl_root, 'name').text = str(name)
             v_root = XML.SubElement(lbl_root, 'values')
