@@ -69,6 +69,24 @@ def archive(parser, xml_parent, data):
         latest.text = 'false'
 
 
+def deploy(parser, xml_parent, data):
+    """yaml: deploy
+    Deploy build artifacts
+
+    :arg str files: comma-seperated list indicating files to deploy
+    :arg str remote: path to the remote directory
+
+    """
+
+    deployer = XML.SubElement(xml_parent,
+                         'org.jenkinsci.plugins.artifactdeployer.ArtifactDeployerPublisher')
+    XML.SubElement(deployer, 'plugin').text = 'artifactdeployer@0.26'
+    entries = XML.SubElement(deployer, 'entries')
+    entry_e = XML.SubElement(entries,
+                'org.jenkinsci.plugins.artifactdeployer.ArtifactDeployerEntry')
+    XML.SubElement(entry_e, 'includes').text = data['artifacts']
+    XML.SubElement(entry_e, 'remote').text = data['remote']
+
 def trigger_parameterized_builds(parser, xml_parent, data):
     """yaml: trigger-parameterized-builds
     Trigger parameterized builds of other jobs.
