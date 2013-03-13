@@ -80,7 +80,6 @@ def deploy(parser, xml_parent, data):
 
     deployer = XML.SubElement(xml_parent,
                          'org.jenkinsci.plugins.artifactdeployer.ArtifactDeployerPublisher')
-    XML.SubElement(deployer, 'plugin').text = 'artifactdeployer@0.26'
     entries = XML.SubElement(deployer, 'entries')
     entry_e = XML.SubElement(entries,
                 'org.jenkinsci.plugins.artifactdeployer.ArtifactDeployerEntry')
