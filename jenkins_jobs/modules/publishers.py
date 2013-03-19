@@ -293,40 +293,20 @@ def ftp(parser, xml_parent, data):
             remove-prefix: 'base/source/dir'
             excludes: '**/*.excludedfiletype'
     """
-    outer_ftp = XML.SubElement(xml_parent,
-                               'jenkins.plugins.publish__over__ftp.'
-                               'BapFtpPublisherPlugin')
-    XML.SubElement(outer_ftp, 'consolePrefix').text = 'FTP: '
-    delegate = XML.SubElement(outer_ftp, 'delegate')
-    publishers = XML.SubElement(delegate, 'publishers')
-    ftp = XML.SubElement(publishers,
-                         'jenkins.plugins.publish__over__ftp.BapFtpPublisher')
-    XML.SubElement(ftp, 'configName').text = data['site']
-    XML.SubElement(ftp, 'verbose').text = 'true'
-
-    transfers = XML.SubElement(ftp, 'transfers')
-    ftp_transfers = XML.SubElement(transfers,
-                                   'jenkins.plugins.publish__over__ftp.'
-                                   'BapFtpTransfer')
-    XML.SubElement(ftp_transfers, 'remoteDirectory').text = data['target']
-    XML.SubElement(ftp_transfers, 'sourceFiles').text = data['source']
-    XML.SubElement(ftp_transfers, 'excludes').text = data['excludes']
-    XML.SubElement(ftp_transfers, 'removePrefix').text = data['remove-prefix']
-    XML.SubElement(ftp_transfers, 'remoteDirectorySDF').text = 'false'
-    XML.SubElement(ftp_transfers, 'flatten').text = 'false'
-    XML.SubElement(ftp_transfers, 'cleanRemote').text = 'false'
-    XML.SubElement(ftp_transfers, 'asciiMode').text = 'false'
-
-    XML.SubElement(ftp, 'useWorkspaceInPromotion').text = 'false'
-    XML.SubElement(ftp, 'usePromotionTimestamp').text = 'false'
-    XML.SubElement(delegate, 'continueOnError').text = 'false'
-    XML.SubElement(delegate, 'failOnError').text = 'false'
-    XML.SubElement(delegate, 'alwaysPublishFromMaster').text = 'false'
-    XML.SubElement(delegate, 'hostConfigurationAccess',
-                   {'class':
-                       'jenkins.plugins.publish_over_ftp.'
-                       'BapFtpPublisherPlugin',
-                    'reference': '../..'})
+    console_prefix = 'FTP: '
+    plugin_tag = 'jenkins.plugins.publish__over__ftp.BapFtpPublisherPlugin'
+    publisher_tag = 'jenkins.plugins.publish__over__ftp.BapFtpPublisher'
+    transfer_tag = 'jenkins.plugins.publish__over__ftp.BapFtpTransfer'
+    plugin_reference_tag = 'jenkins.plugins.publish_over_ftp.'    \
+        'BapFtpPublisherPlugin'
+    (_, transfer_node) = base_publish_over(xml_parent,
+                                           data,
+                                           console_prefix,
+                                           plugin_tag,
+                                           publisher_tag,
+                                           transfer_tag,
+                                           plugin_reference_tag)
+    XML.SubElement(transfer_node, 'asciiMode').text = 'false'
 
 
 def junit(parser, xml_parent, data):
@@ -587,19 +567,20 @@ def checkstyle(parser, xml_parent, data):
     :arg bool shouldDetectModules:
     :arg int healthy: sunny threshold
     :arg int unHealthy: stormy threshold
-    :arg str healthThreshold: Threshold priority for health status
+    :arg str healthThreshold: threshold priority for health status
      (high: only high, normal: high and normal, low: all)
-    :arg dict thresholds
-        :arg dict unstable
-            :arg int totalAll
-            :arg int totalHigh
-            :arg int totalNormal
-            :arg int totalLow
-        :arg dict failed
-            :arg int totalAll
-            :arg int totalHigh
-            :arg int totalNormal
-            :arg int totalLow
+    :arg dict thresholds:
+        :thresholds:
+            * **unstable** (`dict`)
+                :unstable: * **totalAll** (`int`)
+                           * **totalHigh** (`int`)
+                           * **totalNormal** (`int`)
+                           * **totalLow** (`int`)
+            * **failed** (`dict`)
+                :failed: * **totalAll** (`int`)
+                         * **totalHigh** (`int`)
+                         * **totalNormal** (`int`)
+                         * **totalLow** (`int`)
     :arg str defaultEncoding: encoding for parsing or showing files
      (empty will use platform default)
 
@@ -1161,6 +1142,39 @@ def groovy_postbuild(parser, xml_parent, data):
     XML.SubElement(groovy, 'groovyScript').text = data
 
 
+def base_publish_over(xml_parent, data, console_prefix,
+                      plugin_tag, publisher_tag,
+                      transferset_tag, reference_plugin_tag):
+    outer = XML.SubElement(xml_parent, plugin_tag)
+    XML.SubElement(outer, 'consolePrefix').text = console_prefix
+    delegate = XML.SubElement(outer, 'delegate')
+    publishers = XML.SubElement(delegate, 'publishers')
+    inner = XML.SubElement(publishers, publisher_tag)
+    XML.SubElement(inner, 'configName').text = data['site']
+    XML.SubElement(inner, 'verbose').text = 'true'
+
+    transfers = XML.SubElement(inner, 'transfers')
+    transfersset = XML.SubElement(transfers, transferset_tag)
+    XML.SubElement(transfersset, 'remoteDirectory').text = data['target']
+    XML.SubElement(transfersset, 'sourceFiles').text = data['source']
+    XML.SubElement(transfersset, 'excludes').text = data.get('excludes', '')
+    XML.SubElement(transfersset, 'removePrefix').text = \
+        data.get('remove-prefix', '')
+    XML.SubElement(transfersset, 'remoteDirectorySDF').text = 'false'
+    XML.SubElement(transfersset, 'flatten').text = 'false'
+    XML.SubElement(transfersset, 'cleanRemote').text = 'false'
+
+    XML.SubElement(inner, 'useWorkspaceInPromotion').text = 'false'
+    XML.SubElement(inner, 'usePromotionTimestamp').text = 'false'
+    XML.SubElement(delegate, 'continueOnError').text = 'false'
+    XML.SubElement(delegate, 'failOnError').text = 'false'
+    XML.SubElement(delegate, 'alwaysPublishFromMaster').text = 'false'
+    XML.SubElement(delegate, 'hostConfigurationAccess',
+                   {'class': reference_plugin_tag,
+                    'reference': '../..'})
+    return (outer, transfersset)
+
+
 def cifs(parser, xml_parent, data):
     """yaml: cifs
     Upload files via CIFS.
@@ -1184,39 +1198,19 @@ def cifs(parser, xml_parent, data):
             remove-prefix: 'base/source/dir'
             excludes: '**/*.excludedfiletype'
     """
-    outer_cifs = XML.SubElement(xml_parent,
-                                'jenkins.plugins.publish__over__cifs.'
-                                'CifsPublisherPlugin')
-    XML.SubElement(outer_cifs, 'consolePrefix').text = 'CIFS: '
-    delegate = XML.SubElement(outer_cifs, 'delegate')
-    publishers = XML.SubElement(delegate, 'publishers')
-    cifs = XML.SubElement(publishers,
-                          'jenkins.plugins.publish__over__cifs.CifsPublisher')
-    XML.SubElement(cifs, 'configName').text = data['site']
-    XML.SubElement(cifs, 'verbose').text = 'true'
-
-    transfers = XML.SubElement(cifs, 'transfers')
-    cifs_transfers = XML.SubElement(transfers,
-                                    'jenkins.plugins.publish__over__cifs.'
-                                    'CifsTransfer')
-    XML.SubElement(cifs_transfers, 'remoteDirectory').text = data['target']
-    XML.SubElement(cifs_transfers, 'sourceFiles').text = data['source']
-    XML.SubElement(cifs_transfers, 'excludes').text = data['excludes']
-    XML.SubElement(cifs_transfers, 'removePrefix').text = data['remove-prefix']
-    XML.SubElement(cifs_transfers, 'remoteDirectorySDF').text = 'false'
-    XML.SubElement(cifs_transfers, 'flatten').text = 'false'
-    XML.SubElement(cifs_transfers, 'cleanRemote').text = 'false'
-
-    XML.SubElement(cifs, 'useWorkspaceInPromotion').text = 'false'
-    XML.SubElement(cifs, 'usePromotionTimestamp').text = 'false'
-    XML.SubElement(delegate, 'continueOnError').text = 'false'
-    XML.SubElement(delegate, 'failOnError').text = 'false'
-    XML.SubElement(delegate, 'alwaysPublishFromMaster').text = 'false'
-    XML.SubElement(delegate, 'hostConfigurationAccess',
-                   {'class':
-                       'jenkins.plugins.publish_over_cifs.'
-                       'CifsPublisherPlugin',
-                    'reference': '../..'})
+    console_prefix = 'CIFS: '
+    plugin_tag = 'jenkins.plugins.publish__over__cifs.CifsPublisherPlugin'
+    publisher_tag = 'jenkins.plugins.publish__over__cifs.CifsPublisher'
+    transfer_tag = 'jenkins.plugins.publish__over__cifs.CifsTransfer'
+    plugin_reference_tag = 'jenkins.plugins.publish_over_cifs.'    \
+        'CifsPublisherPlugin'
+    base_publish_over(xml_parent,
+                      data,
+                      console_prefix,
+                      plugin_tag,
+                      publisher_tag,
+                      transfer_tag,
+                      plugin_reference_tag)
 
 
 class Publishers(jenkins_jobs.modules.base.Base):
