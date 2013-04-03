@@ -116,6 +116,7 @@ setuptools.setup(
             'logparser=jenkins_jobs.modules.publishers:logparser',
             'copy-to-master=jenkins_jobs.modules.publishers:copy_to_master',
             'jira=jenkins_jobs.modules.publishers:jira',
+            'cifs=jenkins_jobs.modules.publishers:cifs',
         ],
         'jenkins_jobs.scm': [
             'git=jenkins_jobs.modules.scm:git',
@@ -125,6 +126,7 @@ setuptools.setup(
             'gerrit=jenkins_jobs.modules.triggers:gerrit',
             'pollscm=jenkins_jobs.modules.triggers:pollscm',
             'timed=jenkins_jobs.modules.triggers:timed',
+            'github=jenkins_jobs.modules.triggers:github',
         ],
         'jenkins_jobs.wrappers': [
             'timeout=jenkins_jobs.modules.wrappers:timeout',

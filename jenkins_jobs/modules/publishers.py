@@ -80,7 +80,6 @@ def deploy(parser, xml_parent, data):
 
     deployer = XML.SubElement(xml_parent,
                          'org.jenkinsci.plugins.artifactdeployer.ArtifactDeployerPublisher')
-    XML.SubElement(deployer, 'plugin').text = 'artifactdeployer@0.26'
     entries = XML.SubElement(deployer, 'entries')
     entry_e = XML.SubElement(entries,
                 'org.jenkinsci.plugins.artifactdeployer.ArtifactDeployerEntry')
@@ -99,6 +98,7 @@ def trigger_parameterized_builds(parser, xml_parent, data):
       job (optional)
     :arg str git-revision: Pass git revision to the other job (optional)
     :arg str condition: when to trigger the other job (default 'ALWAYS')
+    :arg str property-file: Use properties from file (optional)
 
     Example::
 
@@ -108,6 +108,7 @@ def trigger_parameterized_builds(parser, xml_parent, data):
               predefined-parameters: foo=bar
             - project: other_job1, other_job2
               predefined-parameters: BUILD_NUM=${BUILD_NUMBER}
+              property-file: version.prop
             - project: yet_another_job
               predefined-parameters: foo=bar
               git-revision: true
@@ -123,7 +124,8 @@ def trigger_parameterized_builds(parser, xml_parent, data):
                                  'BuildTriggerConfig')
         tconfigs = XML.SubElement(tconfig, 'configs')
         if ('predefined-parameters' in project_def
-            or 'git-revision' in project_def):
+            or 'git-revision' in project_def
+            or 'property-file' in project_def):
 
             if 'predefined-parameters' in project_def:
                 params = XML.SubElement(tconfigs,
@@ -138,6 +140,12 @@ def trigger_parameterized_builds(parser, xml_parent, data):
                                         'GitRevisionBuildParameters')
                 properties = XML.SubElement(params, 'combineQueuedCommits')
                 properties.text = 'false'
+            if 'property-file' in project_def and project_def['property-file']:
+                params = XML.SubElement(tconfigs,
+                                        'hudson.plugins.parameterizedtrigger.'
+                                        'FileBuildParameters')
+                properties = XML.SubElement(params, 'propertiesFile')
+                properties.text = project_def['property-file']
 
         else:
             tconfigs.set('class', 'java.util.Collections$EmptyList')
@@ -285,40 +293,20 @@ def ftp(parser, xml_parent, data):
             remove-prefix: 'base/source/dir'
             excludes: '**/*.excludedfiletype'
     """
-    outer_ftp = XML.SubElement(xml_parent,
-                               'jenkins.plugins.publish__over__ftp.'
-                               'BapFtpPublisherPlugin')
-    XML.SubElement(outer_ftp, 'consolePrefix').text = 'FTP: '
-    delegate = XML.SubElement(outer_ftp, 'delegate')
-    publishers = XML.SubElement(delegate, 'publishers')
-    ftp = XML.SubElement(publishers,
-                         'jenkins.plugins.publish__over__ftp.BapFtpPublisher')
-    XML.SubElement(ftp, 'configName').text = data['site']
-    XML.SubElement(ftp, 'verbose').text = 'true'
-
-    transfers = XML.SubElement(ftp, 'transfers')
-    ftp_transfers = XML.SubElement(transfers,
-                                   'jenkins.plugins.publish__over__ftp.'
-                                   'BapFtpTransfer')
-    XML.SubElement(ftp_transfers, 'remoteDirectory').text = data['target']
-    XML.SubElement(ftp_transfers, 'sourceFiles').text = data['source']
-    XML.SubElement(ftp_transfers, 'excludes').text = data['excludes']
-    XML.SubElement(ftp_transfers, 'removePrefix').text = data['remove-prefix']
-    XML.SubElement(ftp_transfers, 'remoteDirectorySDF').text = 'false'
-    XML.SubElement(ftp_transfers, 'flatten').text = 'false'
-    XML.SubElement(ftp_transfers, 'cleanRemote').text = 'false'
-    XML.SubElement(ftp_transfers, 'asciiMode').text = 'false'
-
-    XML.SubElement(ftp, 'useWorkspaceInPromotion').text = 'false'
-    XML.SubElement(ftp, 'usePromotionTimestamp').text = 'false'
-    XML.SubElement(delegate, 'continueOnError').text = 'false'
-    XML.SubElement(delegate, 'failOnError').text = 'false'
-    XML.SubElement(delegate, 'alwaysPublishFromMaster').text = 'false'
-    XML.SubElement(delegate, 'hostConfigurationAccess',
-                   {'class':
-                       'jenkins.plugins.publish_over_ftp.'
-                       'BapFtpPublisherPlugin',
-                    'reference': '../..'})
+    console_prefix = 'FTP: '
+    plugin_tag = 'jenkins.plugins.publish__over__ftp.BapFtpPublisherPlugin'
+    publisher_tag = 'jenkins.plugins.publish__over__ftp.BapFtpPublisher'
+    transfer_tag = 'jenkins.plugins.publish__over__ftp.BapFtpTransfer'
+    plugin_reference_tag = 'jenkins.plugins.publish_over_ftp.'    \
+        'BapFtpPublisherPlugin'
+    (_, transfer_node) = base_publish_over(xml_parent,
+                                           data,
+                                           console_prefix,
+                                           plugin_tag,
+                                           publisher_tag,
+                                           transfer_tag,
+                                           plugin_reference_tag)
+    XML.SubElement(transfer_node, 'asciiMode').text = 'false'
 
 
 def junit(parser, xml_parent, data):
@@ -579,19 +567,20 @@ def checkstyle(parser, xml_parent, data):
     :arg bool shouldDetectModules:
     :arg int healthy: sunny threshold
     :arg int unHealthy: stormy threshold
-    :arg str healthThreshold: Threshold priority for health status
+    :arg str healthThreshold: threshold priority for health status
      (high: only high, normal: high and normal, low: all)
-    :arg dict thresholds
-        :arg dict unstable
-            :arg int totalAll
-            :arg int totalHigh
-            :arg int totalNormal
-            :arg int totalLow
-        :arg dict failed
-            :arg int totalAll
-            :arg int totalHigh
-            :arg int totalNormal
-            :arg int totalLow
+    :arg dict thresholds:
+        :thresholds:
+            * **unstable** (`dict`)
+                :unstable: * **totalAll** (`int`)
+                           * **totalHigh** (`int`)
+                           * **totalNormal** (`int`)
+                           * **totalLow** (`int`)
+            * **failed** (`dict`)
+                :failed: * **totalAll** (`int`)
+                         * **totalHigh** (`int`)
+                         * **totalNormal** (`int`)
+                         * **totalLow** (`int`)
     :arg str defaultEncoding: encoding for parsing or showing files
      (empty will use platform default)
 
@@ -1151,6 +1140,77 @@ def groovy_postbuild(parser, xml_parent, data):
         'GroovyPostbuildRecorder'
     groovy = XML.SubElement(xml_parent, root_tag)
     XML.SubElement(groovy, 'groovyScript').text = data
+
+
+def base_publish_over(xml_parent, data, console_prefix,
+                      plugin_tag, publisher_tag,
+                      transferset_tag, reference_plugin_tag):
+    outer = XML.SubElement(xml_parent, plugin_tag)
+    XML.SubElement(outer, 'consolePrefix').text = console_prefix
+    delegate = XML.SubElement(outer, 'delegate')
+    publishers = XML.SubElement(delegate, 'publishers')
+    inner = XML.SubElement(publishers, publisher_tag)
+    XML.SubElement(inner, 'configName').text = data['site']
+    XML.SubElement(inner, 'verbose').text = 'true'
+
+    transfers = XML.SubElement(inner, 'transfers')
+    transfersset = XML.SubElement(transfers, transferset_tag)
+    XML.SubElement(transfersset, 'remoteDirectory').text = data['target']
+    XML.SubElement(transfersset, 'sourceFiles').text = data['source']
+    XML.SubElement(transfersset, 'excludes').text = data.get('excludes', '')
+    XML.SubElement(transfersset, 'removePrefix').text = \
+        data.get('remove-prefix', '')
+    XML.SubElement(transfersset, 'remoteDirectorySDF').text = 'false'
+    XML.SubElement(transfersset, 'flatten').text = 'false'
+    XML.SubElement(transfersset, 'cleanRemote').text = 'false'
+
+    XML.SubElement(inner, 'useWorkspaceInPromotion').text = 'false'
+    XML.SubElement(inner, 'usePromotionTimestamp').text = 'false'
+    XML.SubElement(delegate, 'continueOnError').text = 'false'
+    XML.SubElement(delegate, 'failOnError').text = 'false'
+    XML.SubElement(delegate, 'alwaysPublishFromMaster').text = 'false'
+    XML.SubElement(delegate, 'hostConfigurationAccess',
+                   {'class': reference_plugin_tag,
+                    'reference': '../..'})
+    return (outer, transfersset)
+
+
+def cifs(parser, xml_parent, data):
+    """yaml: cifs
+    Upload files via CIFS.
+    Requires the Jenkins `Publish over CIFS Plugin.
+    <https://wiki.jenkins-ci.org/display/JENKINS/Publish+Over+CIFS+Plugin>`_
+
+    :arg str site: name of the cifs site/share
+    :arg str target: destination directory
+    :arg str source: source path specifier
+    :arg str excludes: excluded file pattern (optional)
+    :arg str remove-prefix: prefix to remove from uploaded file paths
+      (optional)
+
+    Example::
+
+      publishers:
+        - cifs:
+            site: 'cifs.share'
+            target: 'dest/dir'
+            source: 'base/source/dir/**'
+            remove-prefix: 'base/source/dir'
+            excludes: '**/*.excludedfiletype'
+    """
+    console_prefix = 'CIFS: '
+    plugin_tag = 'jenkins.plugins.publish__over__cifs.CifsPublisherPlugin'
+    publisher_tag = 'jenkins.plugins.publish__over__cifs.CifsPublisher'
+    transfer_tag = 'jenkins.plugins.publish__over__cifs.CifsTransfer'
+    plugin_reference_tag = 'jenkins.plugins.publish_over_cifs.'    \
+        'CifsPublisherPlugin'
+    base_publish_over(xml_parent,
+                      data,
+                      console_prefix,
+                      plugin_tag,
+                      publisher_tag,
+                      transfer_tag,
+                      plugin_reference_tag)
 
 
 class Publishers(jenkins_jobs.modules.base.Base):
