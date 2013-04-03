@@ -139,6 +139,7 @@ setuptools.setup(
             'copy-to-slave=jenkins_jobs.modules.wrappers:copy_to_slave',
             'inject=jenkins_jobs.modules.wrappers:inject',
             'jclouds=jenkins_jobs.modules.wrappers:jclouds',
+            'matrixtieparent=jenkins_jobs.modules.wrappers:matrixtieparent',
         ],
         'jenkins_jobs.modules': [
             'general=jenkins_jobs.modules.general:General',

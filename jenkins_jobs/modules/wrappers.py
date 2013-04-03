@@ -346,6 +346,24 @@ def jclouds(parser, xml_parent, data):
                        'jenkins.plugins.jclouds.compute.'
                        'JCloudsOneOffSlave')
 
+def matrixtieparent(parser, xml_parent, data):
+    """yaml: matrixtieparent
+    Run parent job of a matrix build on a particular node.
+    Requires the Jenkins `Matrix Tie Parent Plugin.
+    <https://wiki.jenkins-ci.org/display/JENKINS/Matrix+Tie+Parent+Plugin>`_
+
+    :arg str labelname: Label/Node name to run parent job on
+
+    Example::
+
+      wrappers:
+        - matrixtieparent:
+            labelname: master
+    """
+    twrapper = XML.SubElement(xml_parent,
+                              'matrixtieparent.BuildWrapperMtp')
+    tlabelname = XML.SubElement(twrapper, 'labelName')
+    tlabelname.text = str(data['labelname'])
 
 class Wrappers(jenkins_jobs.modules.base.Base):
     sequence = 80
