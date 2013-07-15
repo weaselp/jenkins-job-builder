@@ -859,6 +859,7 @@ def email_ext(parser, xml_parent, data):
     :arg bool still-unstable: Send an email if the build is still unstable
         (default false)
     :arg bool pre-build: Send an email before the build (default false)
+    :arg matrixTriggerMode string: BOTH, ONLY_PARENT, ONLY_CONFIGURATION (default BOTH)
 
     Example::
 
@@ -918,6 +919,7 @@ def email_ext(parser, xml_parent, data):
         'body', '$DEFAULT_CONTENT')
     XML.SubElement(emailext, 'attachmentsPattern').text = ''
     XML.SubElement(emailext, 'presendScript').text = ''
+    XML.SubElement(emailext, 'matrixTriggerMode').text = data.get('matrixTriggerMode', 'BOTH')
 
 
 def fingerprint(parser, xml_parent, data):
